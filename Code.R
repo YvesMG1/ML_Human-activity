@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 library(caret)
 library(ggplot2)
@@ -29,17 +30,17 @@ har_train %>%
   arrange(desc(missing_share)) %>%
   print(n = 100)
 
-training <- har_train[, colMeans(is.na(har_train)) < 0.9]
-training$user_name <- as.factor(training$user_name)
-training$classe <- as.factor(training$classe)
-training <- training[, !sapply(training, is.character)]
-training <- select(training, -c(1:5))
+har_train_cl <- har_train[, colMeans(is.na(har_train)) < 0.9]
+har_train_cl$user_name <- as.factor(har_train_cl$user_name)
+har_train_cl$classe <- as.factor(har_train_cl$classe)
+har_train_cl <- har_train_cl[, !sapply(har_train_cl, is.character)]
+har_train_cl <- select(har_train_cl, -c(1:5))
 
 # Analyze and visualize data
-summary(training)
-str(training)
+summary(har_train_cl)
+str(har_train_cl)
 
-plot_vars <- select(training, -classe)
+plot_vars <- select(har_train_cl, -classe)
 ggplot(gather(plot_vars), aes(x = value)) + 
   geom_histogram(bins = 15) +
   facet_wrap(~key,scales = 'free_x')
@@ -52,7 +53,7 @@ tibble(skewness = abs(skews), column = names(skews)) %>%
 sel_vars <- c('gyros_dumbbell_y', 'gyros_dumbbell_z', 'gyros_dumbbell_x',
               'gyros_forearm_y', 'gyros_forearm_z', 'gyros_forearm_x')
 
-training %>%
+har_train_cl %>%
   select(sel_vars) %>%
   gather(key, value) %>%
   ggplot( aes(x = value)) + 
@@ -60,7 +61,7 @@ training %>%
      facet_wrap(~key,scales = 'free_x')
 
 
-cors <- cor(plot_vars)
+cors <- cor(plot_vars, as.numeric(har_train_cl$classe))
 corrplot(cors, method="color",   
          addCoef.col = "grey20",
          type="lower",
@@ -68,10 +69,39 @@ corrplot(cors, method="color",
          number.cex = 0.5)
 
 
+# Create validation 
+inTrain <- createDataPartition(har_train_cl$classe, p = 0.75, list = F)
+training <- har_train_cl[inTrain,]
+validation <- har_train_cl[-inTrain,]
 
+# Build first model
+set.seed(123)
+mod_tree <- train(classe~., method = 'rpart', data = training)
+fancyRpartPlot(mod_tree$finalModel)
 
+pred_tree <- predict(mod_tree, validation)
+confusionMatrix(pred_tree, factor(validation$classe))
 
+# Build alternative models
+mod_rf <- train(classe~., method = 'rf', data = training)
+mod_gbm <- train(classe~., method = 'gbm', data = training)
+mod_svm <- train(classe~., method = 'svmRadial', data = training)
 
+model_results <- resamples(list(DT = mod_tree, RF = mod_rf, GBM = mod_gbm, SVM = mod_svm))
+summary(model_results)
+bwplot(model_results)
 
+pred_rf <- predict(mod_rf, validation)
+confusionMatrix(pred_rf, factor(validation$classe))
 
+#Test data
+testing <- har_test[, colMeans(is.na(har_test)) < 0.9]
+testing <- testing[, !sapply(testing, is.character)]
+testing <- select(testing, -c(1:4))
+testing <- select(testing, -problem_id)
 
+predict(mod_rf, testing)
+
+=======
+# Test
+>>>>>>> 3b673b7ae04cbc7d11ba87e928fa7fc1c3598cd2
